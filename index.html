@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Call Tracker</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --line:#30363d; --fg:#e6edf3; --mut:#8b949e; --acc:#238636; --acc2:#2ea043; --amb:#9e6a03; --amb2:#bb8009; --dan:#da3633; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; }
+  body {
+    background:var(--bg); color:var(--fg);
+    font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 16px);
+    max-width:520px; margin:0 auto;
+  }
+  header { display:flex; align-items:center; justify-content:space-between; padding:18px 0 8px; }
+  h1 { font-size:18px; margin:0; letter-spacing:.3px; }
+  .date { color:var(--mut); font-size:13px; }
+  .hero { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px 20px; text-align:center; }
+  .big { font-size:72px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; }
+  .lbl { color:var(--mut); font-size:13px; text-transform:uppercase; letter-spacing:1px; margin-top:8px; }
+  .split { display:flex; gap:10px; margin-top:18px; }
+  .sp { flex:1; background:#0d1117; border:1px solid var(--line); border-radius:10px; padding:10px 6px; }
+  .sp b { display:block; font-size:22px; font-variant-numeric:tabular-nums; }
+  .sp span { font-size:11px; color:var(--mut); text-transform:uppercase; letter-spacing:.5px; }
+  .sp.c b { color:var(--acc2); }
+  .sp.n b { color:var(--amb2); }
+  .goalwrap { margin-top:16px; }
+  .bar { height:8px; background:#21262d; border-radius:99px; overflow:hidden; }
+  .fill { height:100%; background:var(--acc2); width:0; transition:width .25s; }
+  .goaltxt { color:var(--mut); font-size:12px; margin-top:6px; display:flex; justify-content:space-between; }
+  .goaltxt input { width:56px; background:#21262d; border:1px solid var(--line); color:var(--fg); border-radius:6px; padding:2px 6px; font-size:12px; text-align:center; }
+  button { font:inherit; border:none; border-radius:14px; cursor:pointer; color:#fff; }
+  button:active { transform:scale(.97); }
+  .logs { display:flex; gap:10px; margin-top:16px; }
+  .logs button { flex:1; padding:22px 10px; font-size:17px; font-weight:600; line-height:1.25; }
+  .logs button small { display:block; font-size:11px; font-weight:400; opacity:.8; margin-top:4px; letter-spacing:.4px; }
+  #conn { background:var(--acc); }
+  #noconn { background:var(--amb); }
+  .row { display:flex; gap:10px; margin-top:10px; }
+  .row button { flex:1; padding:14px; font-size:14px; background:var(--card); border:1px solid var(--line); color:var(--fg); }
+  .row .undo { color:#f0a5a5; }
+  .stats { display:flex; gap:10px; margin-top:18px; }
+  .stat { flex:1; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center; }
+  .stat b { display:block; font-size:22px; font-variant-numeric:tabular-nums; }
+  .stat span { color:var(--mut); font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+  h2 { font-size:13px; color:var(--mut); text-transform:uppercase; letter-spacing:1px; margin:26px 0 8px; }
+  .hist { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .hrow { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--line); font-size:14px; }
+  .hrow:last-child { border-bottom:none; }
+  .hrow .d { color:var(--mut); }
+  .hrow .v { display:flex; gap:10px; align-items:baseline; font-variant-numeric:tabular-nums; }
+  .hrow .v .g { color:var(--acc2); font-size:13px; }
+  .hrow .v .a { color:var(--amb2); font-size:13px; }
+  .hrow .v .t { font-weight:600; min-width:28px; text-align:right; }
+  .empty { padding:16px; color:var(--mut); font-size:14px; text-align:center; }
+  footer { margin:22px 0 8px; text-align:center; }
+  footer button { background:none; color:var(--dan); font-size:13px; padding:8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📞 Call Tracker</h1>
+  <div class="date" id="today"></div>
+</header>
+
+<div class="hero">
+  <div class="big" id="count">0</div>
+  <div class="lbl">Total calls dialed today</div>
+  <div class="split">
+    <div class="sp c"><b id="tConn">0</b><span>Connected</span></div>
+    <div class="sp n"><b id="tNo">0</b><span>Not connected</span></div>
+    <div class="sp"><b id="tRate">—</b><span>Connect rate</span></div>
+  </div>
+  <div class="goalwrap">
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="goaltxt">
+      <span id="pct">0%</span>
+      <span>Goal <input id="goal" type="number" min="1" inputmode="numeric"></span>
+    </div>
+  </div>
+</div>
+
+<div class="logs">
+  <button id="conn">✅ Connected<small>Reached someone</small></button>
+  <button id="noconn">📵 Not connected<small>No answer / VM</small></button>
+</div>
+<div class="row">
+  <button class="undo" id="undoConn">↺ Undo connected</button>
+  <button class="undo" id="undoNo">↺ Undo not conn.</button>
+</div>
+
+<div class="stats">
+  <div class="stat"><b id="week">0</b><span>This week</span></div>
+  <div class="stat"><b id="total">0</b><span>All time</span></div>
+  <div class="stat"><b id="avg">0</b><span>Daily avg</span></div>
+</div>
+
+<h2>Last 7 days</h2>
+<div class="hist" id="hist"></div>
+
+<footer><button id="reset">Reset all data</button></footer>
+
+<script>
+const KEY = 'callTracker.v1';
+const blank = () => ({ c:0, n:0 });
+
+function load() {
+  let raw = {};
+  try { raw = JSON.parse(localStorage.getItem(KEY)) || {}; } catch { raw = {}; }
+  const db = { days:{}, goal: raw.goal || 50 };
+  // migrate v1 (plain number per day) -> {c,n}; old counts become "not connected"-agnostic totals
+  for (const [k, v] of Object.entries(raw.days || {})) {
+    if (typeof v === 'number') db.days[k] = { c:0, n:v, legacy:true };
+    else db.days[k] = { c: v.c || 0, n: v.n || 0 };
+  }
+  return db;
+}
+let db = load();
+const save = () => localStorage.setItem(KEY, JSON.stringify(db));
+
+const key = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const todayKey = () => key(new Date());
+const get = k => db.days[k] || blank();
+const tot = o => o.c + o.n;
+
+function add(field, delta) {
+  const k = todayKey();
+  const day = db.days[k] || blank();
+  day[field] = Math.max(0, (day[field] || 0) + delta);
+  delete day.legacy;
+  if (tot(day) === 0) delete db.days[k]; else db.days[k] = day;
+  save(); render();
+  if (delta > 0 && navigator.vibrate) navigator.vibrate(15);
+}
+
+function render() {
+  const t = new Date();
+  document.getElementById('today').textContent =
+    t.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' });
+
+  const d0 = get(todayKey());
+  const c = tot(d0);
+  document.getElementById('count').textContent = c;
+  document.getElementById('tConn').textContent = d0.c;
+  document.getElementById('tNo').textContent = d0.n;
+  document.getElementById('tRate').textContent = c ? Math.round(d0.c / c * 100) + '%' : '—';
+
+  const goal = db.goal || 50;
+  document.getElementById('goal').value = goal;
+  const pct = Math.min(100, Math.round(c / goal * 100));
+  document.getElementById('fill').style.width = pct + '%';
+  document.getElementById('pct').textContent = pct + '% of goal';
+
+  let week = 0;
+  const rows = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(t); d.setDate(t.getDate() - i);
+    const o = get(key(d));
+    week += tot(o);
+    rows.push({ d, o });
+  }
+  const all = Object.values(db.days);
+  const total = all.reduce((a, b) => a + tot(b), 0);
+
+  document.getElementById('week').textContent = week;
+  document.getElementById('total').textContent = total;
+  document.getElementById('avg').textContent = all.length ? Math.round(total / all.length) : 0;
+
+  const shown = rows.filter(r => tot(r.o) > 0);
+  document.getElementById('hist').innerHTML = shown.length
+    ? shown.map(r => `<div class="hrow">
+        <span class="d">${r.d.toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'})}</span>
+        <span class="v"><span class="g">${r.o.c} conn</span><span class="a">${r.o.n} no</span><span class="t">${tot(r.o)}</span></span>
+      </div>`).join('')
+    : '<div class="empty">No calls logged yet — hit a button above.</div>';
+}
+
+document.getElementById('conn').onclick     = () => add('c', 1);
+document.getElementById('noconn').onclick   = () => add('n', 1);
+document.getElementById('undoConn').onclick = () => add('c', -1);
+document.getElementById('undoNo').onclick   = () => add('n', -1);
+document.getElementById('goal').onchange = e => {
+  db.goal = Math.max(1, parseInt(e.target.value, 10) || 50);
+  save(); render();
+};
+document.getElementById('reset').onclick = () => {
+  if (confirm('Delete all call history?')) { db = { days:{}, goal:db.goal }; save(); render(); }
+};
+
+let day = todayKey();
+setInterval(() => { if (todayKey() !== day) { day = todayKey(); render(); } }, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { db = load(); render(); } });
+
+render();
+</script>
+</body>
+</html>
