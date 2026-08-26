@@ -54,6 +54,12 @@
   .streak span { color:var(--mut); font-size:12px; margin-left:4px; }
   .notify { width:100%; margin-top:10px; padding:12px; background:var(--card); border:1px solid var(--line); color:var(--fg); font-size:13px; }
   .notify.enabled { color:var(--acc2); }
+  .modal { position:fixed; inset:0; display:flex; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.65); padding:16px; z-index:10; }
+  .modal[hidden] { display:none; }
+  .sheet { width:100%; max-width:520px; background:var(--card); border:1px solid var(--line); border-radius:18px; padding:18px; }
+  .sheet h3 { margin:0 0 14px; font-size:18px; }
+  .choice { display:block; width:100%; padding:16px; margin-top:10px; background:#21262d; border:1px solid var(--line); color:var(--fg); text-align:left; font-size:16px; }
+  .cancel { display:block; width:100%; padding:13px; margin-top:10px; background:transparent; color:var(--mut); font-size:14px; }
   h2 { font-size:13px; color:var(--mut); text-transform:uppercase; letter-spacing:1px; margin:26px 0 8px; }
   .hist { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
   .hrow { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--line); font-size:14px; }
@@ -113,6 +119,14 @@
 <div class="hist" id="hist"></div>
 
 <footer><button id="reset">Reset all data</button></footer>
+
+<div class="modal" id="outcomeModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 id="modalTitle"></h3>
+    <div id="choices"></div>
+    <button class="cancel" id="cancelOutcome">Cancel</button>
+  </div>
+</div>
 
 <script>
 const KEY = 'callTracker.v1';
@@ -223,27 +237,30 @@ function render() {
     : '<div class="empty">No calls logged yet — hit a button above.</div>';
 }
 
-document.getElementById('conn').onclick     = () => add('c', 1);
-document.getElementById('conn').onclick = () => {
-  const pick = prompt('Connected outcome:\n1) Right person (conversation)\n2) Not the right person\n3) Referred someone\n4) Meeting booked', '1');
-  if (pick === null) return;
-  if (pick === '1') add('cr', 1);
-  else if (pick === '2') add('cnr', 1);
-  else if (pick === '3') add('c', 1);
-  else if (pick === '4') { add('m', 1); add('c', 1); }
-  else return;
-  add('c', 1);
-};
-document.getElementById('noconn').onclick = () => {
-  const pick = prompt('Not connected outcome:\n1) No answer\n2) Voicemail\n3) Wrong number\n4) Busy', '1');
-  if (pick === null) return;
-  if (pick === '1') add('na', 1);
-  else if (pick === '2') add('vm', 1);
-  else if (pick === '3') add('wn', 1);
-  else if (pick === '4') add('bs', 1);
-  else return;
-  add('n', 1);
-};
+const outcomeModal = document.getElementById('outcomeModal');
+const choices = document.getElementById('choices');
+function showOutcomes(title, options, onSelect) {
+  document.getElementById('modalTitle').textContent = title;
+  choices.innerHTML = options.map(option => `<button class="choice" data-field="${option.field}">${option.label}</button>`).join('');
+  choices.querySelectorAll('.choice').forEach(button => {
+    button.onclick = () => { outcomeModal.hidden = true; onSelect(button.dataset.field); };
+  });
+  outcomeModal.hidden = false;
+}
+document.getElementById('conn').onclick = () => showOutcomes('Connected outcome', [
+  { field:'cr', label:'👤 Right person (conversation)' },
+  { field:'cnr', label:'↪️ Not the right person' },
+  { field:'ref', label:'🤝 Referred someone' },
+  { field:'m', label:'📅 Meeting booked' }
+], field => { add('c', 1); if (field === 'm') add('m', 1); else if (field !== 'ref') add(field, 1); });
+document.getElementById('noconn').onclick = () => showOutcomes('Not connected outcome', [
+  { field:'na', label:'🔕 No answer' },
+  { field:'vm', label:'📨 Voicemail' },
+  { field:'wn', label:'❌ Wrong number' },
+  { field:'bs', label:'📵 Busy' }
+], field => { add('n', 1); add(field, 1); });
+document.getElementById('cancelOutcome').onclick = () => { outcomeModal.hidden = true; };
+outcomeModal.onclick = event => { if (event.target === outcomeModal) outcomeModal.hidden = true; };
 document.getElementById('undoConn').onclick = () => add('c', -1);
 document.getElementById('undoNo').onclick   = () => add('n', -1);
 document.getElementById('goal').onchange = e => {
