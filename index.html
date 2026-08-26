@@ -116,6 +116,12 @@ const KEY = 'callTracker.v1';
 const blank = () => ({ c:0, n:0, m:0, cr:0, cnr:0, na:0, vm:0, wn:0, bs:0 });
 const key = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const todayKey = () => key(new Date());
+const isWeekday = d => d.getDay() > 0 && d.getDay() < 6;
+const previousWeekday = d => {
+  const previous = new Date(d);
+  do { previous.setDate(previous.getDate() - 1); } while (!isWeekday(previous));
+  return previous;
+};
 
 function load() {
   let raw = {};
@@ -139,9 +145,8 @@ function load() {
     }
   }
   const today = todayKey();
-  if (db.lastActive !== today) {
-    const previous = new Date();
-    previous.setDate(previous.getDate() - 1);
+  if (isWeekday(new Date()) && db.lastActive !== today) {
+    const previous = previousWeekday(new Date());
     db.streak = db.lastActive === key(previous) ? db.streak + 1 : 1;
     db.lastActive = today;
     localStorage.setItem(KEY, JSON.stringify(db));
@@ -237,7 +242,8 @@ document.getElementById('goal').onchange = e => {
 };
 document.getElementById('reset').onclick = () => {
   if (confirm('Delete all call history and reset streak?')) {
-    db = { days:{}, goal:db.goal, streak:1, lastActive:todayKey() };
+    const now = new Date();
+    db = { days:{}, goal:db.goal, streak:isWeekday(now) ? 1 : 0, lastActive:isWeekday(now) ? todayKey() : '' };
     save(); render();
   }
 };
