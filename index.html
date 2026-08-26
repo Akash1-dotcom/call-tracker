@@ -49,6 +49,9 @@
   .stat { flex:1; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center; }
   .stat b { display:block; font-size:22px; font-variant-numeric:tabular-nums; }
   .stat span { color:var(--mut); font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+  .streak { margin-top:10px; padding:12px; background:var(--card); border:1px solid var(--line); border-radius:12px; text-align:center; }
+  .streak b { color:var(--amb2); font-size:20px; }
+  .streak span { color:var(--mut); font-size:12px; margin-left:4px; }
   h2 { font-size:13px; color:var(--mut); text-transform:uppercase; letter-spacing:1px; margin:26px 0 8px; }
   .hist { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
   .hrow { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--line); font-size:14px; }
@@ -101,6 +104,7 @@
   <div class="stat"><b id="total">0</b><span>All time</span></div>
   <div class="stat"><b id="avg">0</b><span>Daily avg</span></div>
 </div>
+<div class="streak"><b id="streak">1 day</b><span>daily login streak 🔥</span></div>
 
 <h2>Last 7 days</h2>
 <div class="hist" id="hist"></div>
@@ -110,11 +114,13 @@
 <script>
 const KEY = 'callTracker.v1';
 const blank = () => ({ c:0, n:0, m:0, cr:0, cnr:0, na:0, vm:0, wn:0, bs:0 });
+const key = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const todayKey = () => key(new Date());
 
 function load() {
   let raw = {};
   try { raw = JSON.parse(localStorage.getItem(KEY)) || {}; } catch { raw = {}; }
-  const db = { days:{}, goal: raw.goal || 50 };
+  const db = { days:{}, goal: raw.goal || 50, streak: raw.streak || 0, lastActive: raw.lastActive || '' };
   // migrate old schemas to detailed outcomes
   for (const [k, v] of Object.entries(raw.days || {})) {
     if (typeof v === 'number') db.days[k] = { ...blank(), n:v, legacy:true };
@@ -132,13 +138,19 @@ function load() {
       db.days[k] = d;
     }
   }
+  const today = todayKey();
+  if (db.lastActive !== today) {
+    const previous = new Date();
+    previous.setDate(previous.getDate() - 1);
+    db.streak = db.lastActive === key(previous) ? db.streak + 1 : 1;
+    db.lastActive = today;
+    localStorage.setItem(KEY, JSON.stringify(db));
+  }
   return db;
 }
 let db = load();
 const save = () => localStorage.setItem(KEY, JSON.stringify(db));
 
-const key = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-const todayKey = () => key(new Date());
 const get = k => db.days[k] || blank();
 const tot = o => o.c + o.n;
 
@@ -185,6 +197,7 @@ function render() {
   document.getElementById('week').textContent = week;
   document.getElementById('total').textContent = total;
   document.getElementById('avg').textContent = all.length ? Math.round(total / all.length) : 0;
+  document.getElementById('streak').textContent = `${db.streak} ${db.streak === 1 ? 'day' : 'days'}`;
 
   const shown = rows.filter(r => tot(r.o) > 0);
   document.getElementById('hist').innerHTML = shown.length
@@ -223,7 +236,10 @@ document.getElementById('goal').onchange = e => {
   save(); render();
 };
 document.getElementById('reset').onclick = () => {
-  if (confirm('Delete all call history?')) { db = { days:{}, goal:db.goal }; save(); render(); }
+  if (confirm('Delete all call history and reset streak?')) {
+    db = { days:{}, goal:db.goal, streak:1, lastActive:todayKey() };
+    save(); render();
+  }
 };
 
 let day = todayKey();
