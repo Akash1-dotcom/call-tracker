@@ -52,6 +52,8 @@
   .streak { margin-top:10px; padding:12px; background:var(--card); border:1px solid var(--line); border-radius:12px; text-align:center; }
   .streak b { color:var(--amb2); font-size:20px; }
   .streak span { color:var(--mut); font-size:12px; margin-left:4px; }
+  .notify { width:100%; margin-top:10px; padding:12px; background:var(--card); border:1px solid var(--line); color:var(--fg); font-size:13px; }
+  .notify.enabled { color:var(--acc2); }
   h2 { font-size:13px; color:var(--mut); text-transform:uppercase; letter-spacing:1px; margin:26px 0 8px; }
   .hist { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
   .hrow { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--line); font-size:14px; }
@@ -105,6 +107,7 @@
   <div class="stat"><b id="avg">0</b><span>Daily avg</span></div>
 </div>
 <div class="streak"><b id="streak">1 day</b><span>daily login streak 🔥</span></div>
+<button class="notify" id="notify">🔔 Enable 45-minute reminders</button>
 
 <h2>Last 7 days</h2>
 <div class="hist" id="hist"></div>
@@ -158,6 +161,7 @@ const save = () => localStorage.setItem(KEY, JSON.stringify(db));
 
 const get = k => db.days[k] || blank();
 const tot = o => o.c + o.n;
+const REMINDER_MS = 45 * 60 * 1000;
 
 function add(field, delta) {
   const k = todayKey();
@@ -203,6 +207,12 @@ function render() {
   document.getElementById('total').textContent = total;
   document.getElementById('avg').textContent = all.length ? Math.round(total / all.length) : 0;
   document.getElementById('streak').textContent = `${db.streak} ${db.streak === 1 ? 'day' : 'days'}`;
+  const notify = document.getElementById('notify');
+  const enabled = 'Notification' in window &&
+    localStorage.getItem('callTracker.reminders') === 'on' &&
+    Notification.permission === 'granted';
+  notify.textContent = enabled ? '🔔 45-minute reminders enabled' : '🔔 Enable 45-minute reminders';
+  notify.classList.toggle('enabled', enabled);
 
   const shown = rows.filter(r => tot(r.o) > 0);
   document.getElementById('hist').innerHTML = shown.length
@@ -248,8 +258,35 @@ document.getElementById('reset').onclick = () => {
   }
 };
 
+document.getElementById('notify').onclick = async () => {
+  if (!('Notification' in window)) {
+    alert('Browser notifications are not supported here.');
+    return;
+  }
+  const permission = Notification.permission === 'granted'
+    ? 'granted'
+    : await Notification.requestPermission();
+  if (permission !== 'granted') {
+    alert('Please allow notifications in your browser settings to enable reminders.');
+    return;
+  }
+  localStorage.setItem('callTracker.reminders', 'on');
+  localStorage.setItem('callTracker.lastReminderAt', String(Date.now()));
+  render();
+};
+
+function checkReminder() {
+  if (!('Notification' in window)) return;
+  if (localStorage.getItem('callTracker.reminders') !== 'on' || Notification.permission !== 'granted') return;
+  const last = Number(localStorage.getItem('callTracker.lastReminderAt') || Date.now());
+  if (Date.now() - last < REMINDER_MS) return;
+  new Notification('Call Tracker', { body:'45 minutes have passed. Ready for your next calls?' });
+  localStorage.setItem('callTracker.lastReminderAt', String(Date.now()));
+}
+
 let day = todayKey();
 setInterval(() => { if (todayKey() !== day) { day = todayKey(); render(); } }, 30000);
+setInterval(checkReminder, 30000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { db = load(); render(); } });
 
 render();
