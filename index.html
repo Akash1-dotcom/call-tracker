@@ -21,6 +21,7 @@
   h1 { font-size:18px; margin:0; letter-spacing:.3px; }
   .date { color:var(--mut); font-size:13px; }
   .hero { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px 20px; text-align:center; }
+  .mood { font-size:42px; line-height:1; margin-bottom:8px; }
   .big { font-size:72px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; }
   .lbl { color:var(--mut); font-size:13px; text-transform:uppercase; letter-spacing:1px; margin-top:8px; }
   .split { display:flex; gap:10px; margin-top:18px; }
@@ -69,6 +70,7 @@
 </header>
 
 <div class="hero">
+  <div class="mood" id="mood" aria-label="Call progress mood">😢</div>
   <div class="big" id="count">0</div>
   <div class="lbl">Total calls dialed today</div>
   <div class="split">
@@ -157,6 +159,7 @@ function render() {
 
   const d0 = get(todayKey());
   const c = tot(d0);
+  document.getElementById('mood').textContent = c >= 30 ? '😄' : c >= 20 ? '🙂' : '😢';
   document.getElementById('count').textContent = c;
   document.getElementById('tConn').textContent = d0.c;
   document.getElementById('tNo').textContent = d0.n;
